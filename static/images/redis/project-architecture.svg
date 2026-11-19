@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 370" width="1400" height="740" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#444"/>
+    </marker>
+  </defs>
+  <rect width="700" height="370" fill="#ffffff"/>
+
+  <rect x="20" y="150" width="100" height="60" rx="8" fill="#f1f3f5" stroke="#868e96" stroke-width="2"/>
+  <text x="70" y="186" text-anchor="middle" font-size="15" fill="#212529">Client</text>
+  <line x1="120" y1="180" x2="168" y2="180" stroke="#444" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="170" y="30" width="250" height="315" rx="12" fill="#f8f9fa" stroke="#1c7ed6" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="295" y="55" text-anchor="middle" font-size="16" font-weight="bold" fill="#1c7ed6">Express API</text>
+
+  <rect x="190" y="70" width="210" height="70" rx="8" fill="#fff9db" stroke="#f08c00" stroke-width="2"/>
+  <text x="295" y="100" text-anchor="middle" font-size="15" font-weight="bold" fill="#212529">1. Rate limiter</text>
+  <text x="295" y="120" text-anchor="middle" font-size="13" fill="#495057">INCR + EXPIRE</text>
+
+  <rect x="190" y="160" width="210" height="70" rx="8" fill="#ebfbee" stroke="#2b8a3e" stroke-width="2"/>
+  <text x="295" y="190" text-anchor="middle" font-size="15" font-weight="bold" fill="#212529">2. Response cache</text>
+  <text x="295" y="210" text-anchor="middle" font-size="13" fill="#495057">GET + SETEX</text>
+
+  <rect x="190" y="250" width="210" height="70" rx="8" fill="#f3f0ff" stroke="#7048e8" stroke-width="2"/>
+  <text x="295" y="280" text-anchor="middle" font-size="15" font-weight="bold" fill="#212529">3. Leaderboard</text>
+  <text x="295" y="300" text-anchor="middle" font-size="13" fill="#495057">ZADD + ZREVRANGE</text>
+
+  <rect x="520" y="30" width="160" height="315" rx="12" fill="#fff5f5" stroke="#d82c20" stroke-width="2"/>
+  <text x="600" y="55" text-anchor="middle" font-size="16" font-weight="bold" fill="#d82c20">Redis</text>
+
+  <rect x="535" y="85" width="130" height="40" rx="6" fill="#ffffff" stroke="#d82c20"/>
+  <text x="600" y="110" text-anchor="middle" font-size="13" fill="#212529">rate:{ip}</text>
+  <rect x="535" y="175" width="130" height="40" rx="6" fill="#ffffff" stroke="#d82c20"/>
+  <text x="600" y="200" text-anchor="middle" font-size="13" fill="#212529">cache:product:1</text>
+  <rect x="535" y="265" width="130" height="40" rx="6" fill="#ffffff" stroke="#d82c20"/>
+  <text x="600" y="290" text-anchor="middle" font-size="13" fill="#212529">leaderboard</text>
+
+  <line x1="400" y1="105" x2="533" y2="105" stroke="#444" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="400" y1="195" x2="533" y2="195" stroke="#444" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="400" y1="285" x2="533" y2="285" stroke="#444" stroke-width="2" marker-end="url(#a)"/>
+</svg>
