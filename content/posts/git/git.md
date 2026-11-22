@@ -969,7 +969,7 @@ When a bug is reported in Flask, a maintainer might run:
 ```bash
 git log --online --after="2024-01-01" --grep="cli" --src/flask/cli.py 
 ```
-This instantly narrows 5,500 commits down to only the recent commits that touched `cli.py` and mentioned "cli" in the message. From there, `git show <has>` reveals exactly what changed.
+This instantly narrows 5,500 commits down to only the recent commits that touched `cli.py` and mentioned "cli" in the message. From there, `git show <hash>` reveals exactly what changed.
 This is how experienced contributors investigate regressions in minutes rather than hours.
 
 ---
@@ -1014,3 +1014,74 @@ Check the output. What commits appear and what does this tell you?
 - You want to find exactly when a function called `validate_user` was introduced into the codebase. Which flag do you use and why?
 - What does `git log --oneline main.. feature/login` show?
 
+---
+## Lesson 5: git branch and git switch in Depth
+You created and switched branches in Phase 1. Now you learn the full toolkit professional developers use to manage many branches at once — which is the daily reality of any active open source contributor.
+
+---
+### Branch Management Commands
+```bash
+# List all local branches (current branch marked with *)
+git branch
+
+# List local AND remote branches
+git branch -a
+
+# Create a new branch WITHOUT switching to it
+git branch feature/search
+
+# Create AND switch in one step (the version you already know)
+git switch -c feature/search
+
+# Switch to an existing branch
+git switch feature/search
+
+# Rename the current branch
+git branch -m new-name
+
+# Delete a branch (safe — refuses if unmerged work exists)
+git branch -d feature/search
+
+# Force delete a branch (deletes even if unmerged — dangerous)
+git branch -D feature/search
+
+# See which branches are already merged into current branch
+git branch --merged
+
+# See which branches are NOT yet merged
+git branch --no-merged
+```
+
+---
+### switch vs checkout - Why Two Commands Exist?
+You may see older tutorials use `git checkout` for everything. Here is the history: `checkout `is an old, overloaded command that does too many **unrelated things** — switching branches, restoring files, and creating branches all at once, based on confusing flag combinations.
+
+Git introduced `switch` and `restore` in _version 2.23_ specifically to split checkout's responsibilities into clearer, separate commands.
+```bash
+# OLD WAY (still works, but ambiguous)
+git checkout feature/login        # switches branch
+git checkout -- file.txt          # restores a file  ← same command, totally different meaning!
+git checkout -b feature/login     # creates and switches
+
+# NEW WAY (clearer, Git 2.23+)
+git switch feature/login          # only switches branches
+git restore file.txt              # only restores files
+git switch -c feature/login       # creates and switches
+
+```
+You should use `switch` and `restore` going forward. But you must recognize `checkout` because nearly all existing tutorials, Stack Overflow answers, and older project documentation still use it.
+
+---
+### Safe Delete vs Force Delete - Why It Matters?
+```bash
+git branch -d feature/old-experiment
+```
+If this branch has commits that were never merged anywhere, Git refuses: 
+```
+error: The branch 'feature/old-experiment' is not fully merged.
+If you are sure you want to delete it, run 'git branch -D feature/old-experiment'.
+
+```
+This is Git protecting you from losing work. The capital `-D` overrides this safety check entirely. Only use it when you are certain the work is truly disposable — for example, an experiment you intentionally want to discard.
+
+---
