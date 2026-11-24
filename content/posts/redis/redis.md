@@ -104,3 +104,90 @@ Redis isn't free magic. RAM costs far more than disk, so you can't stuff everyth
 There's also the old programmer joke: *"There are only two hard things in computer science: cache invalidation (knowing when a cached copy has gone stale and must be thrown out) and naming things."* Once you start caching, you'll understand why it's funny and why it hurts.
 
 That's why I think of Redis as a **fast sidekick** to your main database, never a replacement.
+
+## Setting up Redis
+
+Enough theory. Let's get a real Redis running on your machine.
+
+The easiest way is **Docker** (a tool that runs software inside isolated boxes called containers, so you don't have to install anything messy on your computer). If you don't have it yet, grab Docker Desktop from the official site. If you'd rather not use Docker at all, Redis also has a free cloud version, but we'll stick with Docker here.
+
+Run this in your terminal:
+
+```bash
+docker run -d --name redis-demo -p 6379:6379 redis:7
+```
+
+That's one line, but it does a lot:
+
+- `docker run`: start a new container (one running box).
+- `-d`: run it in the background (detached mode), so it doesn't hog your terminal.
+- `--name redis-demo`: give the container a name, so we don't have to deal with a random ID.
+- `-p 6379:6379`: connect port 6379 on your computer to port 6379 inside the container. A **port** is like a numbered door that programs use to talk to each other, and 6379 is Redis's default door.
+- `redis:7`: the image (a ready-made package of the software) to use, in this case Redis version 7.
+
+The first run downloads the image, so give it a moment. Then check that it's alive:
+
+```bash
+docker ps
+```
+
+You should see `redis-demo` in the list.
+
+## Meet redis-cli
+
+Redis comes with `redis-cli`, a **CLI** (command line interface, meaning you type commands instead of clicking buttons) for talking to the server. Open it inside the container:
+
+```bash
+docker exec -it redis-demo redis-cli
+```
+
+You'll land on a prompt like this:
+
+```
+127.0.0.1:6379>
+```
+
+(`127.0.0.1` just means "this computer". Redis is running at home.)
+
+Let's say hello:
+
+```
+127.0.0.1:6379> PING
+PONG
+```
+
+If you see `PONG`, congratulations, you have a working Redis server. Yes, that's the whole handshake. Very dramatic, I know.
+
+Now your first real commands:
+
+```
+127.0.0.1:6379> SET greeting "hello redis"
+OK
+127.0.0.1:6379> GET greeting
+"hello redis"
+127.0.0.1:6379> DEL greeting
+(integer) 1
+127.0.0.1:6379> GET greeting
+(nil)
+```
+
+- `SET` saves a value under a key.
+- `GET` reads it back.
+- `DEL` deletes it and tells you how many keys it removed.
+- `(nil)` is Redis saying "nothing here". Not an error, just an empty answer.
+
+Type `exit` to leave the CLI. 
+
+## Handy Docker commands
+
+When you're done for the day:
+
+```bash
+docker stop redis-demo     # pause it
+docker start redis-demo    # bring it back
+docker rm -f redis-demo    # delete it completely
+```
+
+If Docker complains that port 6379 is already in use, you probably have another Redis running. Stop it, or change the left number, like `-p 6380:6379`.
+
+Setup done. From here on, everything we do is just commands and code.
