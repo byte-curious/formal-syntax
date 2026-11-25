@@ -191,3 +191,146 @@ docker rm -f redis-demo    # delete it completely
 If Docker complains that port 6379 is already in use, you probably have another Redis running. Stop it, or change the left number, like `-p 6380:6379`.
 
 Setup done. From here on, everything we do is just commands and code.
+
+## Redis data types
+
+Here's where Redis stops being "just a dictionary" and starts being fun. Every value in Redis has a **type** (the kind of data it holds and the commands that work on it). There are five you need to know, and honestly they cover most of what you'll ever use.
+
+![Redis data types](/images/redis/data-types.png)
+
+Open `redis-cli` again and follow along. Typing the commands yourself beats reading them, I promise.
+
+### 1. Strings
+
+The simplest type. A string holds text, a number, or even a small chunk of JSON (a common text format for sending data around). You already used `SET` and `GET`, so let's meet a more interesting command:
+
+```
+127.0.0.1:6379> SET page:views 0
+OK
+127.0.0.1:6379> INCR page:views
+(integer) 1
+127.0.0.1:6379> INCR page:views
+(integer) 2
+```
+
+`INCR` (short for increment) adds 1 to a number stored in a key. Remember how I said every command is atomic (it can't be interrupted halfway)? This is where it pays off. If 1,000 users hit your site at the same moment, Redis will count all 1,000, with no lost clicks and no arguments.
+
+**Use it for:** counters, cached values, and anything that's just "one key, one value".
+
+### 2. Hashes
+
+A hash is like a tiny object (a bundle of named fields) stored under one key. Think of a row in a spreadsheet.
+
+```
+127.0.0.1:6379> HSET user:1 name "Ada" age 25 city "London"
+(integer) 3
+127.0.0.1:6379> HGET user:1 name
+"Ada"
+127.0.0.1:6379> HINCRBY user:1 age 1
+(integer) 26
+127.0.0.1:6379> HGETALL user:1
+1) "name"
+2) "Ada"
+3) "age"
+4) "26"
+5) "city"
+6) "London"
+```
+
+- `HSET` sets one or more fields.
+- `HGET` reads one field.
+- `HINCRBY` changes a number inside one field.
+- `HGETALL` returns everything (field, value, field, value...).
+
+You could store the same user as a JSON string, but then changing one field means reading, editing, and re-saving the whole thing. With a hash, you touch only the field you care about.
+
+**Use it for:** user profiles, settings, any "object with fields".
+
+### 3. Lists
+
+A list is an ordered collection of items, in the order you added them. Items can repeat.
+
+```
+127.0.0.1:6379> RPUSH tasks "write blog" "drink coffee" "deploy"
+(integer) 3
+127.0.0.1:6379> LRANGE tasks 0 -1
+1) "write blog"
+2) "drink coffee"
+3) "deploy"
+127.0.0.1:6379> LPOP tasks
+"write blog"
+127.0.0.1:6379> LLEN tasks
+(integer) 2
+```
+
+- `RPUSH` adds items to the right end (the back). `LPUSH` adds to the left end (the front).
+- `LRANGE tasks 0 -1` reads a slice of the list. `0` means the first item and `-1` means the last one, so this reads everything.
+- `LPOP` removes and returns the item at the front.
+- `LLEN` returns the length.
+
+Push at the back, pop from the front, and you get a **queue** (a line where the first one in is the first one out, like at a chai stall). That's exactly how many background job systems work.
+
+**Use it for:** queues, recent activity feeds, "last 10 things that happened".
+
+### 4. Sets
+
+A set is a collection of **unique** items, in no particular order. Add the same thing twice and Redis quietly ignores the second one.
+
+```
+127.0.0.1:6379> SADD tags "redis" "cache" "redis"
+(integer) 2
+127.0.0.1:6379> SMEMBERS tags
+1) "cache"
+2) "redis"
+127.0.0.1:6379> SISMEMBER tags "redis"
+(integer) 1
+127.0.0.1:6379> SISMEMBER tags "sql"
+(integer) 0
+```
+
+I added three items, but Redis reported `2`, because the duplicate `"redis"` was ignored. `SISMEMBER` asks "is this in the set?" and answers `1` (yes) or `0` (no). Your order from `SMEMBERS` may look different from mine, and that's normal, since sets have no order.
+
+**Use it for:** tags, unique visitors, "who liked this post", and anywhere duplicates would be a bug.
+
+### 5. Sorted sets
+
+This is my favorite, and the star of our leaderboard later. A sorted set is like a set (unique items), but every item has a **score** (a number attached to it). Redis keeps the items sorted by score at all times, automatically.
+
+```
+127.0.0.1:6379> ZADD leaderboard 100 "ada" 250 "linus" 180 "grace"
+(integer) 3
+127.0.0.1:6379> ZREVRANGE leaderboard 0 -1 WITHSCORES
+1) "linus"
+2) "250"
+3) "grace"
+4) "180"
+5) "ada"
+6) "100"
+127.0.0.1:6379> ZINCRBY leaderboard 100 "ada"
+"200"
+127.0.0.1:6379> ZREVRANK leaderboard "ada"
+(integer) 1
+```
+
+- `ZADD` adds items with their scores.
+- `ZREVRANGE` lists items from the **highest** score to the lowest (the `REV` means reversed). `WITHSCORES` shows the numbers too.
+- `ZINCRBY` bumps a score. Ada just earned 100 points.
+- `ZREVRANK` returns an item's position in the ranking, counting from 0. Ada is now `1`, which means second place.
+
+Notice what you didn't do: you never wrote a sorting step. Redis does the sorting while inserting, so reading the top 10 stays fast even with millions of players. It's the only thing in tech that stays sorted without being asked, unlike my downloads folder.
+
+**Use it for:** leaderboards, rankings, "top 10" lists, and anything scheduled by time or priority.
+
+### A quick word on naming keys
+
+You've seen names like `user:1` and `page:views`. That's a convention (an agreed habit, not a rule): use colons to group related keys, such as `user:1:name` or `cache:product:42`. This is called **namespacing** (adding a prefix so names from different features never collide). Keys are also case-sensitive, so `User:1` and `user:1` are two different keys, and yes, that will bite you at least once.
+
+### Which one should I pick?
+
+- One value or a counter? **String.**
+- An object with several fields? **Hash.**
+- Order matters, or you need a queue? **List.**
+- Uniqueness matters? **Set.**
+- Ranking by a number? **Sorted set.**
+
+Redis has a few more types (streams, bitmaps, and others), but these five will carry you a long way. Next up: giving your data an expiry date.

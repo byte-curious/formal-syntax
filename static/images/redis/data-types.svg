@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 440" width="1440" height="880" font-family="Arial, Helvetica, sans-serif">
+  <rect width="720" height="440" fill="#ffffff"/>
+  <text x="20" y="35" font-size="18" font-weight="bold" fill="#212529">Redis data types at a glance</text>
+
+  <rect x="20" y="60" width="130" height="60" rx="8" fill="#e7f5ff" stroke="#1c7ed6" stroke-width="2"/>
+  <text x="85" y="97" text-anchor="middle" font-size="16" font-weight="bold" fill="#212529">String</text>
+  <rect x="165" y="60" width="330" height="60" rx="8" fill="#ffffff" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="180" y="95" font-size="13" font-family="monospace" fill="#212529">"page:views" → "10482"</text>
+  <rect x="510" y="60" width="190" height="60" rx="8" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="525" y="95" font-size="14" fill="#495057">Counters, cached values</text>
+
+  <rect x="20" y="135" width="130" height="60" rx="8" fill="#ebfbee" stroke="#2b8a3e" stroke-width="2"/>
+  <text x="85" y="172" text-anchor="middle" font-size="16" font-weight="bold" fill="#212529">Hash</text>
+  <rect x="165" y="135" width="330" height="60" rx="8" fill="#ffffff" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="180" y="170" font-size="13" font-family="monospace" fill="#212529">user:1 → name: Ada, age: 25</text>
+  <rect x="510" y="135" width="190" height="60" rx="8" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="525" y="170" font-size="14" fill="#495057">Objects, profiles</text>
+
+  <rect x="20" y="210" width="130" height="60" rx="8" fill="#fff9db" stroke="#f08c00" stroke-width="2"/>
+  <text x="85" y="247" text-anchor="middle" font-size="16" font-weight="bold" fill="#212529">List</text>
+  <rect x="165" y="210" width="330" height="60" rx="8" fill="#ffffff" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="180" y="245" font-size="13" font-family="monospace" fill="#212529">tasks → [ write, coffee, deploy ]</text>
+  <rect x="510" y="210" width="190" height="60" rx="8" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="525" y="245" font-size="14" fill="#495057">Queues, recent activity</text>
+
+  <rect x="20" y="285" width="130" height="60" rx="8" fill="#f3f0ff" stroke="#7048e8" stroke-width="2"/>
+  <text x="85" y="322" text-anchor="middle" font-size="16" font-weight="bold" fill="#212529">Set</text>
+  <rect x="165" y="285" width="330" height="60" rx="8" fill="#ffffff" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="180" y="320" font-size="13" font-family="monospace" fill="#212529">tags → { redis, cache, ttl }</text>
+  <rect x="510" y="285" width="190" height="60" rx="8" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="525" y="320" font-size="14" fill="#495057">Unique items, tags</text>
+
+  <rect x="20" y="360" width="130" height="60" rx="8" fill="#fff5f5" stroke="#d82c20" stroke-width="2"/>
+  <text x="85" y="397" text-anchor="middle" font-size="16" font-weight="bold" fill="#212529">Sorted Set</text>
+  <rect x="165" y="360" width="330" height="60" rx="8" fill="#ffffff" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="180" y="395" font-size="13" font-family="monospace" fill="#212529">board → ada:100  grace:180  linus:250</text>
+  <rect x="510" y="360" width="190" height="60" rx="8" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5"/>
+  <text x="525" y="395" font-size="14" fill="#495057">Rankings, leaderboards</text>
+</svg>
