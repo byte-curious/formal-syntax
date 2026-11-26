@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="1280" height="800" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#444"/>
+    </marker>
+  </defs>
+  <rect width="640" height="400" fill="#ffffff"/>
+  <text x="20" y="35" font-size="18" font-weight="bold" fill="#212529">Rate limiter flow (fixed window)</text>
+
+  <rect x="20" y="190" width="100" height="50" rx="8" fill="#f1f3f5" stroke="#868e96" stroke-width="2"/>
+  <text x="70" y="220" text-anchor="middle" font-size="15" fill="#212529">Request</text>
+  <line x1="120" y1="215" x2="168" y2="215" stroke="#444" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="170" y="185" width="150" height="60" rx="8" fill="#fff9db" stroke="#f08c00" stroke-width="2"/>
+  <text x="245" y="210" text-anchor="middle" font-size="14" font-weight="bold" fill="#212529">INCR rate:{ip}</text>
+  <text x="245" y="230" text-anchor="middle" font-size="13" fill="#495057">+ EXPIRE NX</text>
+  <text x="245" y="265" text-anchor="middle" font-size="12" fill="#868e96">1st request starts the timer</text>
+  <line x1="320" y1="215" x2="348" y2="215" stroke="#444" stroke-width="2" marker-end="url(#a)"/>
+
+  <polygon points="440,160 530,215 440,270 350,215" fill="#e7f5ff" stroke="#1c7ed6" stroke-width="2"/>
+  <text x="440" y="220" text-anchor="middle" font-size="14" fill="#212529">count ≤ limit?</text>
+
+  <line x1="440" y1="160" x2="440" y2="102" stroke="#444" stroke-width="2" marker-end="url(#a)"/>
+  <text x="452" y="135" font-size="14" font-weight="bold" fill="#2b8a3e">Yes</text>
+  <rect x="355" y="50" width="170" height="50" rx="8" fill="#ebfbee" stroke="#2b8a3e" stroke-width="2"/>
+  <text x="440" y="72" text-anchor="middle" font-size="14" fill="#212529">Continue to the route</text>
+  <text x="440" y="90" text-anchor="middle" font-size="13" fill="#2b8a3e">200 OK</text>
+
+  <line x1="440" y1="270" x2="440" y2="298" stroke="#444" stroke-width="2" marker-end="url(#a)"/>
+  <text x="452" y="290" font-size="14" font-weight="bold" fill="#c92a2a">No</text>
+  <rect x="355" y="300" width="170" height="50" rx="8" fill="#fff5f5" stroke="#c92a2a" stroke-width="2"/>
+  <text x="440" y="322" text-anchor="middle" font-size="14" fill="#212529">Block the request</text>
+  <text x="440" y="340" text-anchor="middle" font-size="13" fill="#c92a2a">429 Too Many Requests</text>
+  <text x="440" y="372" text-anchor="middle" font-size="12" fill="#868e96">Retry-After: seconds left</text>
+
+  <rect x="20" y="310" width="290" height="70" rx="8" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="35" y="335" font-size="13" fill="#495057">Window ends → Redis deletes the key</text>
+  <text x="35" y="355" font-size="13" fill="#495057">→ counter starts fresh from 0</text>
+</svg>

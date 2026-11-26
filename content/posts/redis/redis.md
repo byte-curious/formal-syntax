@@ -427,3 +427,208 @@ Remember the cache-aside pattern from the start? Every cached copy needs an expi
 A good rule of thumb: the faster your data changes, the shorter the TTL. A stock price might get 5 seconds. A blog post might get an hour.
 
 Now we have all the building blocks. Time to build something real.
+
+
+## Let's build something
+
+Time to stop poking at `redis-cli` and write real code. We'll build one small **API** (a program that other apps talk to over the internet) using **Node.js** (JavaScript that runs outside the browser) and **Express** (a popular, minimal web framework for Node). It will have three features, all powered by Redis:
+
+1. **Response caching:** make a slow endpoint (a URL your API responds to) fast.
+2. **Rate limiting:** stop one client from spamming us.
+3. **Leaderboard:** a live top-players ranking.
+
+Here's the big picture before we write anything:
+
+![Mini project architecture](/images/redis/project-architecture.png)
+
+Every request passes through the rate limiter first, then reaches the feature it wants, and each feature keeps its data in its own Redis key.
+
+### Setup
+
+Make sure your Redis container from Section 2 is running (`docker start redis-demo` if not) and you have Node.js 18 or newer. Then:
+
+```bash
+mkdir redis-demo-api && cd redis-demo-api
+npm init -y
+npm pkg set type=module
+npm install express ioredis
+```
+
+- `npm` (Node's package manager, the thing that downloads libraries for you) installs two packages.
+- `ioredis` is a **client library** (code that lets your app talk to a server, here Redis).
+- `type=module` lets us use modern `import` syntax instead of the older `require`.
+
+Our project will have three small files:
+
+```
+redis-demo-api/
+├── redis.js     # the Redis connection
+├── db.js        # a fake, slow database
+└── server.js    # the API itself
+```
+
+### Connecting to Redis
+
+`redis.js`:
+
+```js
+import Redis from "ioredis";
+
+// With no arguments, ioredis connects to 127.0.0.1:6379,
+// exactly where our Docker container is listening.
+export const redis = new Redis();
+
+redis.on("error", (err) => console.error("Redis error:", err.message));
+```
+
+That's the whole connection. We create it once and share it everywhere. (Don't create a new connection per request, your Redis server will not appreciate the surprise party.)
+
+### A fake slow database
+
+We don't want to install a real database just for a demo, so we'll fake one that is deliberately slow. This is our "library" from the desk analogy.
+
+`db.js`:
+
+```js
+const products = {
+  1: { id: 1, name: "Mechanical Keyboard", price: 79 },
+  2: { id: 2, name: "Noise-Cancelling Headphones", price: 199 },
+  3: { id: 3, name: "Standing Desk", price: 349 },
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function getProductFromDb(id) {
+  await sleep(500); // pretend the database is having a Monday
+  return products[id] ?? null;
+}
+
+export async function updateProductPrice(id, price) {
+  await sleep(500);
+  const product = products[id];
+  if (!product) return null;
+  product.price = price;
+  return product;
+}
+```
+
+Every read takes half a second. Real databases are usually faster than that, but this makes the difference easy to see.
+
+## Feature 1: Response caching
+
+We'll use the **cache-aside** pattern from Section 1, which I promise I haven't forgotten.
+
+`server.js`:
+
+```js
+import express from "express";
+import { redis } from "./redis.js";
+import { getProductFromDb, updateProductPrice } from "./db.js";
+
+const app = express();
+app.use(express.json()); // lets us read JSON sent in request bodies
+
+const CACHE_TTL_SECONDS = 60;
+
+app.get("/products/:id", async (req, res) => {
+  const { id } = req.params;
+  const key = `cache:product:${id}`;
+
+  // 1. Check Redis first
+  const cached = await redis.get(key);
+  if (cached) {
+    return res.json({ source: "cache", data: JSON.parse(cached) });
+  }
+
+  // 2. Cache miss: ask the (slow) database
+  const product = await getProductFromDb(id);
+  if (!product) {
+    return res.status(404).json({ error: "Product not found" });
+  }
+
+  // 3. Save it in Redis with an expiry, then respond
+  await redis.set(key, JSON.stringify(product), "EX", CACHE_TTL_SECONDS);
+  res.json({ source: "database", data: product });
+});
+
+app.listen(3000, () => console.log("API running on http://localhost:3000"));
+```
+
+Walking through it:
+
+- `cache:product:${id}` is our namespaced key (remember the naming tip from Section 3), for example `cache:product:1`.
+- Redis only stores strings, so we use `JSON.stringify` (turn an object into text) when saving and `JSON.parse` (turn text back into an object) when reading. This is called **serialization**.
+- `"EX", 60` is the same expiry flag you used in `redis-cli`, now written in code.
+- I added a `source` field to the response, purely so we can *see* where the data came from.
+
+### Try it
+
+Start the server:
+
+```bash
+node server.js
+```
+
+In another terminal, call the endpoint twice. `curl` (a command line tool for sending web requests) will also print how long each call took:
+
+```bash
+curl -s -w "\nTime: %{time_total}s\n" localhost:3000/products/1
+curl -s -w "\nTime: %{time_total}s\n" localhost:3000/products/1
+```
+
+You should see something like this:
+
+```
+{"source":"database","data":{"id":1,"name":"Mechanical Keyboard","price":79}}
+Time: 0.512s
+
+{"source":"cache","data":{"id":1,"name":"Mechanical Keyboard","price":79}}
+Time: 0.004s
+```
+
+The first call took about half a second. The second took a few milliseconds. Same data, roughly **100x faster**, and all we added was a few lines. That's the moment I fell in love with Redis.
+
+Peek inside Redis to see what we created:
+
+```
+127.0.0.1:6379> GET cache:product:1
+"{\"id\":1,\"name\":\"Mechanical Keyboard\",\"price\":79}"
+127.0.0.1:6379> TTL cache:product:1
+(integer) 41
+```
+
+Our JSON is sitting there with a countdown ticking. In 60 seconds it vanishes, and the next request refills it.
+
+### The stale data problem
+
+Now the part I warned you about with that cache invalidation joke. What happens when the price changes? For up to 60 seconds, users would still see the old price. That's called **stale data** (outdated data that no longer matches the source).
+
+The fix is simple: when we update the database, we **delete** the cached copy, so the next read fetches fresh data. Add this route to `server.js`, above `app.listen`:
+
+```js
+app.put("/products/:id", async (req, res) => {
+  const { id } = req.params;
+  const price = Number(req.body.price);
+
+  const product = await updateProductPrice(id, price);
+  if (!product) {
+    return res.status(404).json({ error: "Product not found" });
+  }
+
+  await redis.del(`cache:product:${id}`); // throw away the stale copy
+  res.json({ updated: product });
+});
+```
+
+Test it (restart the server first so it picks up the change):
+
+```bash
+curl -s localhost:3000/products/1                 # fills the cache
+curl -s -X PUT localhost:3000/products/1 \
+  -H "Content-Type: application/json" \
+  -d '{"price": 59}'                              # updates DB + deletes cache
+curl -s localhost:3000/products/1                 # fresh price, source: database
+```
+
+Between the TTL and the explicit delete, we've got a solid and simple caching setup. Is it perfect? No. Cache invalidation never is. But it's the version most real apps start with.
+
