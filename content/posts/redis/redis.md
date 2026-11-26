@@ -334,3 +334,96 @@ You've seen names like `user:1` and `page:views`. That's a convention (an agreed
 - Ranking by a number? **Sorted set.**
 
 Redis has a few more types (streams, bitmaps, and others), but these five will carry you a long way. Next up: giving your data an expiry date.
+
+## Giving your data an expiry date
+
+So far everything we saved stays forever (or at least until Redis restarts). That's not always what we want. Think about a login OTP (one-time password) that should die after 30 seconds, or a cached API response that goes stale after a minute.
+
+Redis handles this with **TTL**, short for **time to live** (how many seconds a key has left before Redis deletes it automatically). Think of it as the "this message will self-destruct" feature from spy movies, minus the dramatic smoke.
+
+The easiest way is to set it while saving:
+
+```
+127.0.0.1:6379> SET otp:ada "482913" EX 30
+OK
+127.0.0.1:6379> TTL otp:ada
+(integer) 28
+```
+
+`EX 30` means "expire in 30 seconds", and `TTL` shows how many seconds are left. Wait half a minute and try again:
+
+```
+127.0.0.1:6379> GET otp:ada
+(nil)
+127.0.0.1:6379> TTL otp:ada
+(integer) -2
+```
+
+The key is gone, as if it never existed. No cleanup code, no scheduled job, nothing for you to write.
+
+### Reading the TTL numbers
+
+`TTL` has two special answers, and they confuse everyone at first:
+
+| Answer | Meaning |
+|---|---|
+| A positive number | Seconds left before the key disappears |
+| `-1` | The key exists but has **no expiry** (it will live forever) |
+| `-2` | The key **doesn't exist** (never created, or already expired) |
+
+### Adding or removing an expiry later
+
+You don't have to decide at creation time. You can attach, change, or remove a TTL on an existing key:
+
+```
+127.0.0.1:6379> SET session:ada "abc123"
+OK
+127.0.0.1:6379> TTL session:ada
+(integer) -1
+127.0.0.1:6379> EXPIRE session:ada 60
+(integer) 1
+127.0.0.1:6379> PERSIST session:ada
+(integer) 1
+127.0.0.1:6379> TTL session:ada
+(integer) -1
+```
+
+- `EXPIRE key seconds` attaches a timer to a key that already exists.
+- `PERSIST key` removes the timer, so the key lives on.
+- Need more precision? `PEXPIRE` and `PTTL` work the same way but in **milliseconds** (thousandths of a second).
+
+You'll also see an older command, `SETEX key seconds value`, which does "save + set expiry" in one step. It's the same as `SET key value EX seconds`. Both are fine, and our project code will use the `SET ... EX` style.
+
+### The gotcha that gets everyone
+
+Here's the one that bites people in real projects. Watch this:
+
+```
+127.0.0.1:6379> SET promo "SAVE20" EX 100
+OK
+127.0.0.1:6379> SET promo "SAVE30"
+OK
+127.0.0.1:6379> TTL promo
+(integer) -1
+```
+
+Overwriting a key with a plain `SET` **wipes its expiry**. The key quietly turned immortal, and nothing warned you. If you update a value that should still expire, pass `EX` again (or use `SET promo "SAVE30" KEEPTTL` to keep the old timer).
+
+I once spent an embarrassing amount of time wondering why my "temporary" keys were still alive a week later. Learn from my pain.
+
+### How does Redis actually delete expired keys?
+
+Redis doesn't stare at a thousand clocks all day. It uses two tricks:
+
+1. **Lazy deletion:** when you ask for a key, Redis first checks if it has expired. If yes, it deletes it and answers `(nil)`.
+2. **Periodic sampling:** several times per second, Redis picks a random batch of keys that have a TTL and deletes the expired ones.
+
+So an expired key might sit in memory for a short while before it's physically removed, but you'll never be able to *read* it. For us, that's all we need to know.
+
+### Why this makes Redis a natural cache
+
+Remember the cache-aside pattern from the start? Every cached copy needs an expiry, otherwise it goes stale (outdated compared to the real data) and you serve old answers forever. TTL is the answer to "when do I throw this away?", and it's the simplest defence against that cache invalidation joke from earlier. It doesn't solve it completely, but it stops the bleeding.
+
+A good rule of thumb: the faster your data changes, the shorter the TTL. A stock price might get 5 seconds. A blog post might get an hour.
+
+Now we have all the building blocks. Time to build something real.
